@@ -2,6 +2,7 @@ import csv
 from zipfile import ZipFile
 import pytest
 from openpyxl import load_workbook
+from PyPDF2 import PdfReader
 
 
 @pytest.fixture
@@ -13,7 +14,6 @@ def archiving_files():
 
 
 def xlsx_content_check(file):
-    print("пришли")
     xl_file = load_workbook((file))
     s = xl_file.active
     name_s = xl_file.sheetnames
@@ -21,15 +21,7 @@ def xlsx_content_check(file):
     assert name_s[0] == "Sheet1"
     assert s.max_row == 10
     assert s.max_column == 8
-def csv_content_check(file):
-    with open(file) as csv_file:
-        csv_file = csv.reader(csv_file)
-        for r in csv_file:
-            print(r)
-        row_count = sum(1 for row in csv_file)
-        assert row_count == 6
-        for r in csv_file:
-            print(r)
+    xl_file.close()
 
 
 def test_check_zip_xlsx():
@@ -41,6 +33,14 @@ def test_check_zip_xlsx():
                 xlsx_content_check(file)
 
 
+def csv_content_check(file):
+    with open(file, "r") as csv_file:
+        users = csv.DictReader(csv_file, delimiter=";")
+        users = [user for user in users]
+        assert len(users) == 5
+        assert users[0]["Username"] == "booker12"
+
+
 def test_check_zip_csv():
     with ZipFile("Simple.zip") as check_zip:
         name_files = check_zip.namelist()
@@ -49,3 +49,17 @@ def test_check_zip_csv():
                 assert file == "username.csv"
                 csv_content_check(file)
 
+
+def pdf_content_check(file):
+    reader = PdfReader(file)
+    assert len(reader.pages) == 2
+    index = reader.pages[0].extract_text().find('This is a small demonstration .pdf file')
+    assert index == 21
+
+def test_check_zip_pdf():
+    with ZipFile("Simple.zip") as check_zip:
+        name_files = check_zip.namelist()
+        for file in name_files:
+            if ".pdf" in file:
+                assert file == "sample.pdf"
+                pdf_content_check(file)
